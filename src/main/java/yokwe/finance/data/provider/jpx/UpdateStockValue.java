@@ -1,0 +1,107 @@
+package yokwe.finance.data.provider.jpx;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import yokwe.finance.data.provider.Makefile;
+import yokwe.finance.data.provider.UpdateBase;
+import yokwe.finance.data.type.StockCodeJP;
+import yokwe.finance.data.type.StockValueJP;
+import yokwe.util.json.JSON;
+
+public class UpdateStockValue extends UpdateBase {
+	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
+	
+	public static Makefile MAKEFILE = Makefile.builder().
+		input(StorageJPX.StockCodeName, StorageJPX.StockDetailJSON).
+		output(StorageJPX.StockValue).
+		build();
+		
+	public static void main(String[] args) {
+		callUpdate();
+	}
+	
+	@Override
+	public void update() {
+		var stockList = StorageJPX.StockCodeName.getList();
+		
+		logger.info("stckList  {}", stockList.size());
+		
+		var dataList = new ArrayList<StockDetail.Data>();
+		
+		for(var stock: stockList) {
+			var string = StorageJPX.StockDetailJSON.load(stock.stockCode);
+			var result = JSON.unmarshal(StockDetail.class, string);
+			
+			if (result.section1.data == null) continue;
+			
+			dataList.addAll(result.section1.data.values());
+		}
+		logger.info("dataList  {}", dataList.size());
+		
+		var list = toStockValueList(dataList);
+//		checkAndSave(list, StorageJPX.StockValue);
+		save(list, StorageJPX.StockValue); // to prevent rerun, use save
+	}
+	
+	private List<StockValueJP> toStockValueList(List<StockDetail.Data> dataList) {
+		var map = StorageJPX.StockValue.getList().stream().collect(Collectors.toMap(o -> o.stockCode, Function.identity()));
+		for(var data: dataList) {
+			var stockCode = StockCodeJP.toStockCode5(data.TTCODE2);
+			
+			StockValueJP stockValue;
+			if (map.containsKey(stockCode)) {
+				// existing
+				stockValue = map.get(stockCode);
+			} else {
+				// new
+				stockValue = new StockValueJP(stockCode);
+				map.put(stockCode, stockValue);
+			}
+			
+			// from stock detail
+			stockValue.date      = toLocalDate(data.ZXD);   // ZXD
+			stockValue.open      = toBigDecimal(data.DOP);	// DOP
+			stockValue.openTime  = toLocalTime(data.DOPT);  // DOPT
+			stockValue.high      = toBigDecimal(data.DHP);	// DHP
+			stockValue.highTime  = toLocalTime(data.DHPT);  // DHPT
+			stockValue.low       = toBigDecimal(data.DLP);	// DLP
+			stockValue.lowTime   = toLocalTime(data.DLPT);	// DLPT
+			stockValue.price     = toBigDecimal(data.DPP);	// DPP
+			stockValue.priceTime = toLocalTime(data.DPPT);  // DPPT
+			stockValue.volume    = toLong(data.DV);			// DV
+			stockValue.issued    = toLong(data.SHRK);		// SHRK
+			stockValue.bid       = toBigDecimal(data.QBP);	// QBP
+			stockValue.bidTime   = toLocalTime(data.QBPT);	// QBPT
+			stockValue.ask       = toBigDecimal(data.QAP);	// QAP
+			stockValue.askTime   = toLocalTime(data.QAPT);	// QAPT
+			stockValue.previous  = toBigDecimal(data.PRP);	// PRP  -- previous close
+		}
+		
+		var list = map.values().stream().collect(Collectors.toList());
+		Collections.sort(list);
+		return list;
+	}
+	private static LocalDate toLocalDate(String string) {
+		return string.equals("") ? ZERO_DATE : LocalDate.parse(string.replace("/", "-"));
+	}
+	private static LocalTime toLocalTime(String string) {
+		return string.equals("-") ? ZERO_TIME : LocalTime.parse(string);
+	}
+	private static BigDecimal toBigDecimal(String string) {
+		return (string.equals("-") || string.isEmpty()) ? BigDecimal.ZERO : new BigDecimal(string.replace(",", ""));
+	}
+	private static long toLong(String string) {
+		return string.equals("-") ? 0 : Long.valueOf(string.replace(",", ""));
+	}
+	
+	private static final LocalDate ZERO_DATE = LocalDate.of(2000, 1, 1);
+	private static final LocalTime ZERO_TIME = LocalTime.of(0, 0);
+
+}

@@ -1,0 +1,19 @@
+#
+# expect macos
+#
+SHELL=/opt/local/bin/bash
+MAILTO=hasegawa
+PATH=/opt/local/sbin:/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+# Use english language
+LANG=en_US.UTF-8
+LANGUAGE=en_US:en
+
+YOKWE_FINANCE_DATA=/Users/hasegawa/git/yokwe-finance-data
+
+
+#m   h     dom mon dow   command
+# CLEAR SAVE FILE
+02   1     *   *   *     cd $YOKWE_FINANCE_DATA; ( make LOG_TITLE="maintain save file"  log-start clear-save-file log-stop ) 1>>tmp/cron.log 2>&1
+# SAVE FILE AND CLEAR LOG FILE
+59   23    *   *   6     cd $YOKWE_FINANCE_DATA; ( make LOG_TITLE="maintain log file"  log-start save-all clear-log-file log-stop ) 1>>tmp/cron.log 2>&1
+
