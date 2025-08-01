@@ -11,6 +11,7 @@ import yokwe.util.FileUtil;
 import yokwe.util.Storage;
 import yokwe.util.ToString;
 import yokwe.util.UnexpectedException;
+import yokwe.util.graphviz.Dot;
 
 public class GenerateDot {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
@@ -66,7 +67,7 @@ public class GenerateDot {
 		
 		var groupList = new ArrayList<String>(taskMap.keySet());
 				
-		var g = new yokwe.util.Dot.Digraph("G");
+		var g = new Dot.Digraph("G");
 		g.attr("ranksep", "1").attr("nodesep", "0.5");
 		g.attr("rankdir", "LR");
 //		g.attr("splines", "spline");
