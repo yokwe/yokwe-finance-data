@@ -2,6 +2,8 @@ package yokwe.finance.data.provider.jpx;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import yokwe.finance.data.provider.Makefile;
@@ -28,7 +30,7 @@ public class UpdateStockList extends UpdateBase {
 	public static List<CodeName> getCodeNameList() {
 		var list = new ArrayList<CodeName>();
 		
-		for(var file: getDownloadFiles()) {
+		for(var file: getJSONFileList()) {
 			var string = FileUtil.read().file(file);
 			var result = JSON.unmarshal(StockList.class, string);
 			for(var e: result.section1.data) {
@@ -41,14 +43,18 @@ public class UpdateStockList extends UpdateBase {
 		
 		return list;
 	}
-	public static File[] getDownloadFiles() {
-		return StorageJPX.StockListJSON.getDir().listFiles(o -> o.isFile() && o.getName().endsWith(".json"));
+	public static List<File> getJSONFileList() {
+		var array = StorageJPX.StockDetailJSON.getDir().listFiles(o -> o.isFile() && o.getName().endsWith(".json"));
+		var list  = new ArrayList<File>(Arrays.asList(array));
+		Collections.sort(list);
+		return list;
 	}
+
 	
 	@Override
 	public void update() {
 		// delete files in StorageJPX.StockListJSON
-		FileUtil.deleteFile(getDownloadFiles());
+		FileUtil.deleteFile(getJSONFileList());
 		
 		int pagecount = 99;
 		int count = 0;

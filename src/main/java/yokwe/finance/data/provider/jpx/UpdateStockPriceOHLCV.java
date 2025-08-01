@@ -19,7 +19,7 @@ public class UpdateStockPriceOHLCV  extends UpdateBase {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
 	
 	public static Makefile MAKEFILE = Makefile.builder().
-		input(StorageJPX.StockCodeName, StorageJPX.StockDetailJSON).
+		input(StorageJPX.StockDetailJSON).
 		output(StorageJPX.StockPriceOHLCV).
 		build();
 	
@@ -29,34 +29,28 @@ public class UpdateStockPriceOHLCV  extends UpdateBase {
 	
 	@Override
 	public void update() {
-		var stockList = StorageJPX.StockCodeName.getList();
-		
-		delistUnknownFile(stockList);
+		var stockCodeList = UpdateStockDetailJSON.getJSONFileList().stream().map(o -> o.getName().replace(".json", "")).toList();
+		StorageJPX.StockDiv.delistUnknownFile(stockCodeList);
 		
 		int count = 0;
-		for(var stock: stockList) {
-			if ((++count % 1000) == 1) logger.info("{}  /  {}", count, stockList.size());
+		for(var stockCode: stockCodeList) {
+			if ((++count % 1000) == 1) logger.info("{}  /  {}", count, stockCodeList.size());
 			
-			var string = StorageJPX.StockDetailJSON.load(stock.stockCode);
+			var string = StorageJPX.StockDetailJSON.load(stockCode);
 			var result = JSON.unmarshal(StockDetail.class, string);
-			updatePrice(stock, result);
+			
+			if (result.section1.data == null) {
+				logger.warn("data is null  {}", stockCode);
+			} else {
+				updatePrice(result);
+			}
 		}
 		
 		// touch file
 		StorageJPX.StockPriceOHLCV.touch();
 	}
 	
-	protected void delistUnknownFile(List<StockCodeName> stockList) {
-		var validNameList = stockList.stream().map(o -> o.stockCode).toList();
-		StorageJPX.StockPriceOHLCV.delistUnknownFile(validNameList);
-	}
-	private void updatePrice(StockCodeName stock, StockDetail result) {
-		if (result.section1.data == null) {
-			logger.warn("data is null  {}  {}", stock.stockCode, stock.name);
-			logger.warn("  result  {}", result.toString());
-			return;
-		}
-		
+	private void updatePrice(StockDetail result) {		
 		for(var data: result.section1.data.values()) {
 			var stockCode = StockCodeJP.toStockCode5(data.TTCODE2);
 			

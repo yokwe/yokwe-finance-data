@@ -4,10 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import yokwe.finance.data.provider.Makefile;
 import yokwe.finance.data.provider.UpdateBase;
@@ -19,7 +16,7 @@ public class UpdateStockValue extends UpdateBase {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
 	
 	public static Makefile MAKEFILE = Makefile.builder().
-		input(StorageJPX.StockCodeName, StorageJPX.StockDetailJSON).
+		input(StorageJPX.StockDetailJSON).
 		output(StorageJPX.StockValue).
 		build();
 		
@@ -29,14 +26,14 @@ public class UpdateStockValue extends UpdateBase {
 	
 	@Override
 	public void update() {
-		var stockList = StorageJPX.StockCodeName.getList();
+		var stockCodeList = UpdateStockDetailJSON.getJSONFileList().stream().map(o -> o.getName().replace(".json", "")).toList();
 		
-		logger.info("stckList  {}", stockList.size());
+		logger.info("stockCodeList  {}", stockCodeList.size());
 		
 		var dataList = new ArrayList<StockDetail.Data>();
 		
-		for(var stock: stockList) {
-			var string = StorageJPX.StockDetailJSON.load(stock.stockCode);
+		for(var stockCode: stockCodeList) {
+			var string = StorageJPX.StockDetailJSON.load(stockCode);
 			var result = JSON.unmarshal(StockDetail.class, string);
 			
 			if (result.section1.data == null) continue;
@@ -51,21 +48,13 @@ public class UpdateStockValue extends UpdateBase {
 	}
 	
 	private List<StockValueJP> toStockValueList(List<StockDetail.Data> dataList) {
-		var map = StorageJPX.StockValue.getList().stream().collect(Collectors.toMap(o -> o.stockCode, Function.identity()));
+		var list = new ArrayList<StockValueJP>(dataList.size());
+		
 		for(var data: dataList) {
-			var stockCode = StockCodeJP.toStockCode5(data.TTCODE2);
-			
-			StockValueJP stockValue;
-			if (map.containsKey(stockCode)) {
-				// existing
-				stockValue = map.get(stockCode);
-			} else {
-				// new
-				stockValue = new StockValueJP(stockCode);
-				map.put(stockCode, stockValue);
-			}
+			StockValueJP stockValue = new StockValueJP();
 			
 			// from stock detail
+			stockValue.stockCode = StockCodeJP.toStockCode5(data.TTCODE2);
 			stockValue.date      = toLocalDate(data.ZXD);   // ZXD
 			stockValue.open      = toBigDecimal(data.DOP);	// DOP
 			stockValue.openTime  = toLocalTime(data.DOPT);  // DOPT
@@ -82,10 +71,10 @@ public class UpdateStockValue extends UpdateBase {
 			stockValue.ask       = toBigDecimal(data.QAP);	// QAP
 			stockValue.askTime   = toLocalTime(data.QAPT);	// QAPT
 			stockValue.previous  = toBigDecimal(data.PRP);	// PRP  -- previous close
+			
+			list.add(stockValue);
 		}
 		
-		var list = map.values().stream().collect(Collectors.toList());
-		Collections.sort(list);
 		return list;
 	}
 	private static LocalDate toLocalDate(String string) {
