@@ -44,7 +44,7 @@ public class UpdateStockList extends UpdateBase {
 		return list;
 	}
 	public static List<File> getJSONFileList() {
-		var array = StorageJPX.StockDetailJSON.getDir().listFiles(o -> o.isFile() && o.getName().endsWith(".json"));
+		var array = StorageJPX.StockListJSON.getDir().listFiles(o -> o.isFile() && o.getName().endsWith(".json"));
 		var list  = new ArrayList<File>(Arrays.asList(array));
 		Collections.sort(list);
 		return list;
