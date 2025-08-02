@@ -16,7 +16,7 @@ public class UpdateCompanyInfoUS extends UpdateBase {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
 	
 	public static Makefile MAKEFILE = Makefile.builder().
-		input(StorageUS.StockInfo). // FIXME circular dependency
+		input(StorageUS.StockCodeName). // FIXME circular dependency
 		output(StorageYahoo.CompanyInfoUS).
 		build();
 	
@@ -40,21 +40,21 @@ public class UpdateCompanyInfoUS extends UpdateBase {
 	
 	private int updateCompanyInfo() {
 		// set of required stockCode
-		var stockInfoList = StorageUS.StockInfo.getList();
-		logger.info("stockInfo    {}", stockInfoList.size());
-		stockInfoList.removeIf(o -> o.type.isETF());
-		logger.info("stockInfo    {}  after remove ETF", stockInfoList.size());
+		var stockList = StorageUS.StockCodeName.getList();
+		logger.info("stockList    {}", stockList.size());
+		stockList.removeIf(o -> o.type.isETF());
+		logger.info("stockList    {}  after remove ETF", stockList.size());
 
 		var list = StorageYahoo.CompanyInfoUS.getList();
 		var existingSet = list.stream().map(o -> o.stockCode).collect(Collectors.toSet());
-		stockInfoList.removeIf(o -> existingSet.contains(o.stockCode));
-		logger.info("stockInfo    {}  after remove existing stock", stockInfoList.size());
+		stockList.removeIf(o -> existingSet.contains(o.stockCode));
+		logger.info("stockInfo    {}  after remove existing stock", stockList.size());
 		
-		Collections.shuffle(stockInfoList);
+		Collections.shuffle(stockList);
 		int count = 0;
 		int countMod = 0;
-		for(var stockInfo: stockInfoList) {
-			if ((++count % 100) == 1) logger.info("{}  /  {}", count, stockInfoList.size());
+		for(var stockInfo: stockList) {
+			if ((++count % 100) == 1) logger.info("{}  /  {}", count, stockList.size());
 			
 			ThreadUtil.sleep(SLEEP_IN_MILLI);
 			

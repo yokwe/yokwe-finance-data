@@ -54,8 +54,8 @@
 	
 	
 	<!-- provider bats -->
-	<target name="bats-update-stock-info">
-		<java module="yokwe.finance.data/yokwe.finance.data.provider.bats.UpdateStockInfo" fork="true" failonerror="true">
+	<target name="bats-update-stock-code-name">
+		<java module="yokwe.finance.data/yokwe.finance.data.provider.bats.UpdateStockCodeName" fork="true" failonerror="true">
 			<modulepath refid="build.classpath" />
 			<modulepath refid="target.jar" />
 			<classpath  refid="libreoffice.lib" />
@@ -218,8 +218,8 @@
 	</target>
 	
 	<!-- provider nasdaq -->
-	<target name="nasdaq-update-stock-info">
-		<java module="yokwe.finance.data/yokwe.finance.data.provider.nasdaq.UpdateStockInfo" fork="true" failonerror="true">
+	<target name="nasdaq-update-stock-code-name">
+		<java module="yokwe.finance.data/yokwe.finance.data.provider.nasdaq.UpdateStockCodeName" fork="true" failonerror="true">
 			<modulepath refid="build.classpath" />
 			<modulepath refid="target.jar" />
 			<classpath  refid="libreoffice.lib" />
@@ -228,8 +228,8 @@
 	</target>
 	
 	<!-- provider nyse -->
-	<target name="nyse-update-stock-info">
-		<java module="yokwe.finance.data/yokwe.finance.data.provider.nyse.UpdateStockInfo" fork="true" failonerror="true">
+	<target name="nyse-update-stock-code-name">
+		<java module="yokwe.finance.data/yokwe.finance.data.provider.nyse.UpdateStockCodeName" fork="true" failonerror="true">
 			<modulepath refid="build.classpath" />
 			<modulepath refid="target.jar" />
 			<classpath  refid="libreoffice.lib" />
@@ -300,6 +300,22 @@
 	</target>
 
 	<!-- stock-us -->
+	<target name="stock-us-update-stock-code-name">
+		<java module="yokwe.finance.data/yokwe.finance.data.stock.us.UpdateStockCodeName" fork="true" failonerror="true">
+			<modulepath refid="build.classpath" />
+			<modulepath refid="target.jar" />
+			<classpath  refid="libreoffice.lib" />
+			<sysproperty key="logback.configurationFile" value="${logback.conf}" />
+		</java>
+	</target>
+	<target name="stock-us-update-stock-code-name-all">
+		<java module="yokwe.finance.data/yokwe.finance.data.stock.us.UpdateStockCodeNameAll" fork="true" failonerror="true">
+			<modulepath refid="build.classpath" />
+			<modulepath refid="target.jar" />
+			<classpath  refid="libreoffice.lib" />
+			<sysproperty key="logback.configurationFile" value="${logback.conf}" />
+		</java>
+	</target>
 	<target name="stock-us-update-stock-div">
 		<java module="yokwe.finance.data/yokwe.finance.data.stock.us.UpdateStockDiv" fork="true" failonerror="true">
 			<modulepath refid="build.classpath" />

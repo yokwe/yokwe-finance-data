@@ -2,7 +2,7 @@ package yokwe.finance.data.provider.rakuten;
 
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import yokwe.finance.data.provider.Makefile;
 import yokwe.finance.data.provider.UpdateBase;
+import yokwe.finance.data.type.CodeName;
 import yokwe.finance.data.type.TradingStock;
 import yokwe.finance.data.type.TradingStock.TradeType;
 import yokwe.util.CSVUtil;
@@ -42,10 +43,10 @@ public class UpdateTradingStockUS extends UpdateBase {
 		logger.info("etf        {}", listETF.size());
 		logger.info("stock      {}", listStock.size());
 
-		var set = new HashSet<String>();
-		set.addAll(listETF);
-		set.addAll(listStock);
-		logger.info("set        {}", set.size());
+		var map = new HashMap<String, CodeName>();
+		add(map, listETF);
+		add(map, listStock);
+		logger.info("map        {}", map.size());
 
 		// fix buyFree and name in list
 		var buyFreeSet = getBuyFreeSet();
@@ -53,22 +54,32 @@ public class UpdateTradingStockUS extends UpdateBase {
 		
 		// build list
 		var list = new ArrayList<TradingStock>();
-		var stockCodeMap = yokwe.finance.data.stock.us.StorageUS.StockInfoAll.getList().stream().collect(Collectors.toMap(o -> o.stockCode, o -> o.name));
-		for(var stockCode: set) {
-			if (!stockCodeMap.containsKey(stockCode)) {				
-				logger.warn("Unexpected stock  {}", stockCode);
-				continue;
-			}
-			var feeType   = buyFreeSet.contains(stockCode) ? TradingStock.FeeType.BUY_FREE : TradingStock.FeeType.PAID;
+		for(var codeName: map.values()) {
+			var code      = codeName.code;
+			var feeType   = buyFreeSet.contains(code) ? TradingStock.FeeType.BUY_FREE : TradingStock.FeeType.PAID;
 			var tradeType = TradeType.BUY_SELL;
-			var name      = stockCodeMap.get(stockCode);
-			list.add(new TradingStock(stockCode, feeType, tradeType, name));
+			var name      = codeName.name.replace(",", "").toUpperCase();
+
+			list.add(new TradingStock(code, feeType, tradeType, name));
 		}
 		
 		checkDuplicateKey(list, o -> o.stockCode);
 		checkAndSave(list, StorageRakuten.TradingStockUS);
 	}
-	
+	private void add(Map<String, CodeName> map, List<CodeName> list) {
+		for(var e: list) {
+			var key = e.code;
+			if (map.containsKey(key)) {
+				var old = map.get(key);
+				if (old.name.length() < e.name.length()) {
+					map.put(key, e);
+				}
+			} else {
+				map.put(key, e);
+			}
+		}
+
+	}
 	private Set<String> getBuyFreeSet() {
 		var url    = "https://www.rakuten-sec.co.jp/web/foreign/etf/etf-etn-reit/lineup/0-etf.html";
 		var string = HttpUtil.getInstance().downloadString(url);
@@ -105,19 +116,20 @@ public class UpdateTradingStockUS extends UpdateBase {
 		}
 	}
 	
-	private List<String> getETFList() {
+	private List<CodeName> getETFList() {
 		var url      = "https://www.rakuten-sec.co.jp/web/market/search/etf_search/ETFD.csv";
 		var string   = HttpUtil.getInstance().downloadString(url);
 		StorageRakuten.ETFD.write(string);
 		
 		var dataList = CSVUtil.read(ETFData.class).withHeader(false).file(new StringReader(string));
 		
-		var list = new ArrayList<String>();
+		var list = new ArrayList<CodeName>();
 		for(var data: dataList) {
-			String stockCode = data.symbol;
+			String code = data.symbol;
+			String name = data.name;
 			
 			// sanity check
-			if (stockCode.isEmpty()) continue;
+			if (code.isEmpty()) continue;
 			if (exchangeMap.containsKey(data.exchange)) {
 				var skip = exchangeMap.get(data.exchange);
 				if (skip) continue;
@@ -127,7 +139,7 @@ public class UpdateTradingStockUS extends UpdateBase {
 				throw new UnexpectedException("Unexpected");
 			}
 			
-			list.add(stockCode);
+			list.add(new CodeName(code, name));
 		}
 		
 		return list;
@@ -207,19 +219,20 @@ public class UpdateTradingStockUS extends UpdateBase {
 		Map.entry("Cboe",      Boolean.FALSE)
 	);
 	
-	private List<String> getStockList() {
+	private List<CodeName> getStockList() {
 		var url      = "https://www.trkd-asia.com/rakutensec/exportcsvus?all=on&vall=on&r1=on&forwarding=na&target=0&theme=na&returns=na&head_office=na&name=&sector=na&pageNo=&c=us&p=result";
 		var string   = HttpUtil.getInstance().downloadString(url);
 		StorageRakuten.ExportCSVUS.write(string);
 		
 		var dataList = CSVUtil.read(StockData.class).file(new StringReader(string));
 		
-		var list = new ArrayList<String>();
+		var list = new ArrayList<CodeName>();
 		for(var data: dataList) {
-			String stockCode = data.ticker;
+			String code = data.ticker;
+			String name = data.name;
 			
 			// sanity check
-			if (stockCode.isEmpty()) continue;
+			if (code.isEmpty()) continue;
 			if (tradeableMap.containsKey(data.tradeable)) {
 				var skip = tradeableMap.get(data.tradeable);
 				if (skip) continue;
@@ -229,7 +242,7 @@ public class UpdateTradingStockUS extends UpdateBase {
 				throw new UnexpectedException("tradeable");
 			}
 			
-			list.add(stockCode);
+			list.add(new CodeName(code, name));
 		}
 		
 		return list;

@@ -3,22 +3,24 @@ package yokwe.finance.data.provider.nyse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import yokwe.finance.data.provider.Makefile;
 import yokwe.finance.data.provider.UpdateList;
-import yokwe.finance.data.type.StockInfoUS;
+import yokwe.finance.data.type.StockCodeNameUS;
 import yokwe.finance.data.type.StockInfoUS.Market;
 import yokwe.finance.data.type.StockInfoUS.Type;
+import yokwe.util.FileUtil;
 import yokwe.util.UnexpectedException;
 import yokwe.util.http.HttpUtil;
 import yokwe.util.json.JSON;
 
-public class UpdateStockInfo extends UpdateList<Filter> {
+public class UpdateStockCodeName extends UpdateList<Filter> {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
 	
 	public static Makefile MAKEFILE = Makefile.builder().
 		input().
-		output(StorageNYSE.StockInfo).
+		output(StorageNYSE.StockCodeName).
 		build();
 	
 	public static void main(String[] args) {
@@ -32,30 +34,60 @@ public class UpdateStockInfo extends UpdateList<Filter> {
 		logger.info("stock  {}", stockList.size());
 		logger.info("etf    {}", etfList.size());
 		
-		int countSkip = 0;
-		var list = new ArrayList<Filter>();
-		{
-			for(var e: stockList) {
-				if (e.symbolTicker.startsWith("E:")) {
-					countSkip++;
-					continue;
+		// supply default value for stock and etf
+		for(var e: stockList) {
+			e.normalizedTicker = e.normalizedTicker.replace("p", "-");
+			
+			if (e.exchangeId == null)          e.exchangeId          = "";
+			if (e.instrumentType == null)      e.instrumentType      = "COMMON_STOCK";
+			if (e.symbolTicker == null)        e.symbolTicker        = e.normalizedTicker;
+			if (e.symbolEsignalTicker == null) e.symbolEsignalTicker = "";
+			if (e.micCode == null)             e.micCode             = "XNYS";
+		}
+		for(var e: etfList) {
+			if (e.exchangeId == null)          e.exchangeId          = "";
+			if (e.instrumentType == null)      e.instrumentType      = "EXCHANGE_TRADED_FUND";
+			if (e.symbolTicker == null)        e.symbolTicker        = e.normalizedTicker;
+			if (e.symbolEsignalTicker == null) e.symbolEsignalTicker = "";
+			if (e.micCode == null)             e.micCode             = "XNYS";
+		}
+		
+		var map = new TreeMap<String, Filter>();
+		for(var e: stockList) {
+			// skip unit
+//			if (e.instrumentName.toUpperCase().contains(" UNIT ")) continue;
+			if (e.normalizedTicker.endsWith(".U")) continue;
+			if (e.normalizedTicker.length() == 5 && e.normalizedTicker.charAt(4) == 'U') continue;
+			
+			if (map.containsKey(e.normalizedTicker)) {
+				var old = map.get(e.normalizedTicker);
+				if (old.instrumentName.length() < e.instrumentName.length()) {
+					logger.info("XX  {}", e.normalizedTicker);
+					map.put(e.normalizedTicker, e);
 				}
-				list.add(e);
+			} else {
+				map.put(e.normalizedTicker, e);
 			}
-			for(var e: etfList) {
-				if (e.symbolTicker.startsWith("E:")) {
-					countSkip++;
-					continue;
+		}
+		for(var e: etfList) {
+			if (map.containsKey(e.normalizedTicker)) {
+				var old = map.get(e.normalizedTicker);
+				if (old.instrumentName.length() < e.instrumentName.length()) {
+					logger.info("YY  {}", e.normalizedTicker);
+					map.put(e.normalizedTicker, e);
 				}
-				list.add(e);
+			} else {
+				map.put(e.normalizedTicker, e);
 			}
 		}
 		
-		// sanity check
-		checkDuplicateKey(list, o -> o.normalizedTicker);
-		
-		logger.info("skip   {}", countSkip);
+		var list = new ArrayList<Filter>(map.values());
 		StorageNYSE.Filter.save(list);
+
+		// sanity check
+		checkDuplicateKey(list, o -> o.symbolTicker);
+		
+//		StorageNYSE.Filter.save(list);
 		
 		return list;
 	}
@@ -66,6 +98,10 @@ public class UpdateStockInfo extends UpdateList<Filter> {
 		var body = String.format(BODY_FORMAT, instrumentType);
 		
 		var string = HttpUtil.getInstance().withPost(body, CONTENT_TYPE).downloadString(URL);
+		FileUtil.write().file("tmp/nyse-" + instrumentType, string);
+		
+		
+		
 		var list = JSON.getList(Filter.class, string);
 		
 		// remove "," from instrumentName
@@ -80,7 +116,7 @@ public class UpdateStockInfo extends UpdateList<Filter> {
 	
 	@Override
 	protected void updateFile(List<Filter> filterList) {
-		var list = new ArrayList<StockInfoUS>();
+		var list = new ArrayList<StockCodeNameUS>();
 		
 		int count = 0;
 		int countSkip = 0;
@@ -100,12 +136,10 @@ public class UpdateStockInfo extends UpdateList<Filter> {
 			String symbol   = e.symbolTicker;
 			Market market   = toMarket(e.micCode);
 			Type   type     = toType(e.instrumentType);
-			String sector   = "*DUMMY*"; // set dummy value for now
-			String industry = "*DUMMY*"; // set dummy value for now
 			String name     = e.instrumentName.toUpperCase(); // use upper case
 			
 			if (market == Market.NYSE && (type.isETF() || type.isStock())) {
-				list.add(new StockInfoUS(symbol, market, type, sector, industry, name));
+				list.add(new StockCodeNameUS(symbol, market, type, name));
 			} else {
 				countSkip++;
 			}
@@ -114,7 +148,7 @@ public class UpdateStockInfo extends UpdateList<Filter> {
 		logger.info("total  {}", count);
 		logger.info("skip   {}", countSkip);
 		
-		checkAndSave(list, StorageNYSE.StockInfo);
+		checkAndSave(list, StorageNYSE.StockCodeName);
 	}
 	private static final String MIC_UNLISTED = "XXXX";
 
@@ -147,16 +181,16 @@ public class UpdateStockInfo extends UpdateList<Filter> {
 		throw new UnexpectedException("Unpexpected string");
 	}
 	private static final Map<String, Type> typeMap = Map.ofEntries(
-			Map.entry("CLOSED_END_FUND",              Type.CEF),
-			Map.entry("COMMON_STOCK",                 Type.COMMON),
-			Map.entry("DEPOSITORY_RECEIPT",           Type.ADR),
-			Map.entry("EXCHANGE_TRADED_FUND",         Type.ETF),
-			Map.entry("EXCHANGE_TRADED_NOTE",         Type.ETN),
-			Map.entry("LIMITED_PARTNERSHIP",          Type.LP),
-			Map.entry("PREFERRED_STOCK",              Type.PREF),
-			Map.entry("REIT",                         Type.REIT),
-			Map.entry("TRUST",                        Type.TRUST),
-			Map.entry("UNIT",                         Type.UNIT),
-			Map.entry("UNITS_OF_BENEFICIAL_INTEREST", Type.UBI)
-		);
+		Map.entry("CLOSED_END_FUND",              Type.CEF),
+		Map.entry("COMMON_STOCK",                 Type.COMMON),
+		Map.entry("DEPOSITORY_RECEIPT",           Type.ADR),
+		Map.entry("EXCHANGE_TRADED_FUND",         Type.ETF),
+		Map.entry("EXCHANGE_TRADED_NOTE",         Type.ETN),
+		Map.entry("LIMITED_PARTNERSHIP",          Type.LP),
+		Map.entry("PREFERRED_STOCK",              Type.PREF),
+		Map.entry("REIT",                         Type.REIT),
+		Map.entry("TRUST",                        Type.TRUST),
+		Map.entry("UNIT",                         Type.UNIT),
+		Map.entry("UNITS_OF_BENEFICIAL_INTEREST", Type.UBI)
+	);
 }

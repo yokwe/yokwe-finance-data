@@ -24,7 +24,13 @@ public class OtherListed implements Comparable<OtherListed> {
 	//   P = NYSE ARCA
 	//   Z = BATS Global Markets (BATS)
 	//   V = Investors' Exchange, LLC (IEXG)
-	
+
+	public static final String EXCHANGE_NYSE_MKT  = "A";
+	public static final String EXCHANGE_NYSE      = "N";
+	public static final String EXCHANGE_NYSE_ARCA = "P";
+	public static final String EXCHANGE_BATS      = "Z";
+	public static final String EXCHANGE_IEXG      = "V";
+
 	// CQS Symbol	
 	//   Identifier of the security used to disseminate data via the SIAC Consolidated Quotation System (CQS) and Consolidated Tape System (CTS) data feeds.
 	//   Typical identifiers have 1-5 character root symbol and then 1-3 characters for suffixes. Allow up to 14 characters.
@@ -90,6 +96,12 @@ public class OtherListed implements Comparable<OtherListed> {
 		if (isUnits())   return false;
 		
 		return true;
+	}
+	public boolean isBATS() {
+		return exchange.equals(EXCHANGE_BATS);
+	}
+	public boolean isNYSE() {
+		return exchange.equals(EXCHANGE_BATS) || exchange.equals(EXCHANGE_BATS) || exchange.equals(EXCHANGE_BATS);
 	}
 	
 	// Remove suffix of issued and called

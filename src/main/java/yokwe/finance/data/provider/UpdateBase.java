@@ -19,6 +19,7 @@ import yokwe.util.ClassUtil;
 import yokwe.util.FileUtil;
 import yokwe.util.StackWalkerUtil;
 import yokwe.util.Storage.LoadSaveFileList;
+import yokwe.util.Storage.LoadSaveFileString;
 import yokwe.util.UnexpectedException;
 
 public abstract class UpdateBase {
@@ -114,6 +115,10 @@ public abstract class UpdateBase {
 	}
 	public <E extends Comparable<E>> void save(Collection<E> collection, LoadSaveFileList<E> loadSave) {
 		save(new ArrayList<E>(collection), loadSave);
+	}
+	public void save(String string, LoadSaveFileString loadSave) {
+		logger.info("save  {}  {}", string.length(), loadSave.getFile());
+		loadSave.save(string);
 	}
 
 	

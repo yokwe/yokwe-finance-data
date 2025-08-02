@@ -8,7 +8,7 @@ import java.util.Map;
 
 import yokwe.finance.data.provider.Makefile;
 import yokwe.finance.data.provider.UpdateList;
-import yokwe.finance.data.type.StockInfoUS;
+import yokwe.finance.data.type.StockCodeNameUS;
 import yokwe.finance.data.type.StockInfoUS.Market;
 import yokwe.finance.data.type.StockInfoUS.Type;
 import yokwe.util.CSVUtil;
@@ -16,12 +16,12 @@ import yokwe.util.FTPUtil;
 import yokwe.util.MarketHoliday;
 import yokwe.util.UnexpectedException;
 
-public class UpdateStockInfo extends UpdateList<ListedSecurityReport> {
+public class UpdateStockCodeName extends UpdateList<ListedSecurityReport> {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
 	
 	public static Makefile MAKEFILE = Makefile.builder().
 		input().
-		output(StorageBATS.StockInfo).
+		output(StorageBATS.StockCodeName).
 		build();
 	
 	public static void main(String[] args) {
@@ -72,7 +72,7 @@ public class UpdateStockInfo extends UpdateList<ListedSecurityReport> {
 	
 	@Override
 	protected void updateFile(List<ListedSecurityReport> reportList) {		
-		List<StockInfoUS> stockInfoList = new ArrayList<>();
+		var stockList = new ArrayList<StockCodeNameUS>(reportList.size());
 		
 		int countSkip = 0;
 		
@@ -91,8 +91,6 @@ public class UpdateStockInfo extends UpdateList<ListedSecurityReport> {
 			String symbol   = e.symbol;
 			Market market   = Market.BATS;
 			Type   type     = typeMap.get(e.issueType);
-			String sector   = "*DUMMY*"; // set dummy value for now
-			String industry = "*DUMMY*"; // set dummy value for now
 			String name     = e.issueName.replace(",", "").toUpperCase(); // use upper case
 			
 			if (type == null) {
@@ -103,14 +101,14 @@ public class UpdateStockInfo extends UpdateList<ListedSecurityReport> {
 				throw new UnexpectedException("Unexpected issueType");
 			}
 
-			stockInfoList.add(new StockInfoUS(symbol, market, type, industry, sector, name));
+			stockList.add(new StockCodeNameUS(symbol, market, type, name));
 		}
 		logger.info("skip  {}", countSkip);
 		
 		// sanity check
-		checkDuplicateKey(stockInfoList, o -> o.stockCode);
+		checkDuplicateKey(stockList, o -> o.stockCode);
 		
 		// save csv file
-		checkAndSave(stockInfoList, StorageBATS.StockInfo);
+		checkAndSave(stockList, StorageBATS.StockCodeName);
 	}
 }

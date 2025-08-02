@@ -1,20 +1,21 @@
 package yokwe.finance.data.stock.us;
 
-import java.util.TreeSet;
+import java.util.ArrayList;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import yokwe.finance.data.provider.Makefile;
 import yokwe.finance.data.provider.UpdateBase;
-import yokwe.finance.data.provider.rakuten.StorageRakuten;
 import yokwe.finance.data.provider.yahoo.StorageYahoo;
 import yokwe.finance.data.type.StockInfoUS;
+import yokwe.finance.data.type.StockInfoUS.Market;
+import yokwe.finance.data.type.StockInfoUS.Type;
 
 public class UpdateStockInfo extends UpdateBase {
 	private static final org.slf4j.Logger logger = yokwe.util.LoggerUtil.getLogger();
 	
 	public static Makefile MAKEFILE = Makefile.builder().
-		input(StorageRakuten.TradingStockUS, StorageUS.StockInfoAll, StorageYahoo.CompanyInfoUS).
+		input(StorageUS.StockCodeName, StorageYahoo.CompanyInfoUS).
 		output(StorageUS.StockInfo).
 		build();
 	
@@ -24,38 +25,26 @@ public class UpdateStockInfo extends UpdateBase {
 	
 	@Override
 	public void update() {
-		var rakutenSet = StorageRakuten.TradingStockUS.getList().stream().map(o -> o.stockCode).collect(Collectors.toSet());
-		logger.info("rakuten  {}", rakutenSet.size());
+		var stockList = StorageUS.StockCodeName.getList();
+		logger.info("stockList       {}", stockList.size());
 		
-		var tradingSet = new TreeSet<String>();
-		tradingSet.addAll(rakutenSet);
-		logger.info("trading  {}", tradingSet.size());
-		
-		var list = StorageUS.StockInfoAll.getList();
-		logger.info("list     {}  all", list.size());
-		
-		list.removeIf(o -> !tradingSet.contains(o.stockCode));
-		logger.info("list     {}  remove not in tradingSet", list.size());
-		
-		// supply sector and industry
 		var companyInfoMap = StorageYahoo.CompanyInfoUS.getList().stream().collect(Collectors.toMap(o -> o.stockCode, Function.identity()));
-		for(var stockInfo: list) {
-			var stockCode = stockInfo.stockCode;
-			if (stockInfo.type == StockInfoUS.Type.PREF) {
-				stockInfo.sector    = "*" + stockInfo.type + "*";
-				stockInfo.industry  = "*" + stockInfo.type + "*";
-			} else {
-				var companyInfo = companyInfoMap.get(stockCode);
-				if (companyInfo != null) {
-					stockInfo.sector    = companyInfo.sector;
-					stockInfo.industry  = companyInfo.industry;
-				} else {
-					stockInfo.sector    = "*" + stockInfo.type + "*";
-					stockInfo.industry  = "*" + stockInfo.type + "*";
-				}
-			}
+		logger.info("companyInfoMap  {}", companyInfoMap.size());
+
+		var list = new ArrayList<StockInfoUS>();
+		for(var e: stockList) {
+			var companyInfo = companyInfoMap.get(e.stockCode);
+			
+			String stockCode = e.stockCode;
+			Market market    = e.market;
+			Type   type      = e.type;
+			String industry  = companyInfo == null ? "*" + e.type + "*" : companyInfo.industry;
+			String sector    = companyInfo == null ? "*" + e.type + "*" : companyInfo.sector;
+			String name      = e.name;
+			list.add(new StockInfoUS(stockCode, market, type, industry, sector, name));
 		}
 		
+		logger.info("list  {}", list.size());
 		checkAndSave(list, StorageUS.StockInfo);
 	}
 }
