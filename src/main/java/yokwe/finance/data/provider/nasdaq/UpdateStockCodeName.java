@@ -34,13 +34,13 @@ public class UpdateStockCodeName extends UpdateBase {
 			logger.info("download nasdaq listed");
 			var list = download(URL_NASDAQLISTED, StorageNASDAQ.NasdaqListedText, NasdaqListed.class);
 			for(var e: list) e.name = e.name.replace(",", "").toUpperCase();
-			StorageNASDAQ.NasdaqListed.save(list);
+			save(list, StorageNASDAQ.NasdaqListed);
 		}
 		{
 			logger.info("download other listed");
 			var list = download(URL_OTHERLISTED,  StorageNASDAQ.OtherListedText,  OtherListed.class);
 			for(var e: list) e.name = e.name.replace(",", "").toUpperCase();
-			StorageNASDAQ.OtherListed.save(list);
+			save(list, StorageNASDAQ.OtherListed);
 		}
 		
 		var stockList = StorageNASDAQ.NasdaqListed.getList();
