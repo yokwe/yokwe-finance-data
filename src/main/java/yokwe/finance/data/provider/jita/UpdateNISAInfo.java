@@ -131,7 +131,7 @@ public class UpdateNISAInfo extends UpdateSimpleGeneric<Void> {
 		}
 		
 		checkDuplicateKey(list, o -> o.isinCode);
-//		checkAndSave(list, StorageJITA.NISAInfo);
-		save(list, StorageJITA.NISAInfo); // to prevent rerun, use save
+		checkAndSave(list, StorageJITA.NISAInfo);
+//		save(list, StorageJITA.NISAInfo); // FIXME to prevent rerun, use save
 	}
 }

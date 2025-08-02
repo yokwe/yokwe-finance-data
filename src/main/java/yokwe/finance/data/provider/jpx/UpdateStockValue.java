@@ -43,8 +43,8 @@ public class UpdateStockValue extends UpdateBase {
 		logger.info("dataList  {}", dataList.size());
 		
 		var list = toStockValueList(dataList);
-//		checkAndSave(list, StorageJPX.StockValue);
-		save(list, StorageJPX.StockValue); // to prevent rerun, use save
+		checkAndSave(list, StorageJPX.StockValue);
+//		save(list, StorageJPX.StockValue); // FIXME to prevent rerun, use save
 	}
 	
 	private List<StockValueJP> toStockValueList(List<StockDetail.Data> dataList) {
